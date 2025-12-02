@@ -311,7 +311,7 @@ contract TSwapPool is ERC20 {
 
     //@audit-info-done constants can be used instead of magic numbers
         return
-        // @audit-High- it should be 1000 but you are charging around 91% fee instrad of 0.03%
+        // @audit-High-done it should be 1000 but you are charging around 91% fee instrad of 0.03%
             ((inputReserves * outputAmount) * 10000) /
             ((outputReserves - outputAmount) * 997);
     }

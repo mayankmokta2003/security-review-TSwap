@@ -1,6 +1,19 @@
 ## High
 
-[H-1] TITLE (Root Cause + Impact) Incorrect fee calculation in the function `TSwapPool::getInputAmountBasedOnOutput` causes protocol to take way too many tokens fron user.
+
+[H-1] TITLE (Root Cause + Impact) In `TSwapPool::sellPoolTokens` we are actually swapping `wethAmount` but we want `wethAmount` which is totally opposite.
+
+Description:  In `TSwapPool::sellPoolTokens` we actually want to sell out `poolTokens` and in return get `weth` so in order to do this we should call `swapExactInput` because our input is our parameter i.e `uint256 poolTokenAmount`, but instead we are calling `swapExactOutput` which will consider `poolTokens` as output amount and `weth` as input.
+
+Impact: User will get `poolTokens` instead of `weth`.
+
+Proof of Concept: 
+
+Recommended Mitigation:
+
+
+
+[H-2] TITLE (Root Cause + Impact) Incorrect fee calculation in the function `TSwapPool::getInputAmountBasedOnOutput` causes protocol to take way too many tokens fron user.
 
 Description: In function `TSwapPool::getInputAmountBasedOnOutput` the calculation is totally wrong in my opinion because you want your protocol to give 0.03% of every swap to the liquidators but this function will actually returns wrong value of input based of output.
 
@@ -29,7 +42,55 @@ function testGetInputAmountBasedOnOutputChargesAlot() public {
 
 </details>
 
-Recommended Mitigation:
+Recommended Mitigation: Consider adding the below code in `TSwapPool::getInputAmountBasedOnOutput` function.
+
+```diff
+return
+-            ((inputReserves * outputAmount) * 10000) /
++            ((inputReserves * outputAmount) * 1000) /
+            ((outputReserves - outputAmount) * 997);
+```
+
+
+
+
+[H-3] TITLE (Root Cause + Impact) Lack of slippage protection in `TSwapPool::swapExactOutput` function.
+
+Description: The `TSwapPool::swapExactOutput` does not provide any sort of slippage protection. First, there should definitely be a parameter saying `uint256 minInputAmount` and then there should be a check for minInputAmount as well if it exceeds the actual input amount, which is miind of similar to what you did in the function `TSwapPool::swapExactInput`.
+
+Impact: If market conditions drops somehow, user will get a much worse swap.
+
+Proof of Concept:
+1. Suppose the price of 1WETH is 100 USDC.
+2. User sees this he wants 1WETH and calls `swapExactOutput` with parameters as (USDC,WETH,1,block.timestamp)
+3. Suddenly the price rises to 1WETH is 200USDC
+4. S the user pays 200USDC to get 1WETH, 2X more the amound user paid.
+
+Recommended Mitigation: Consider adding the below code to the `TSwapPool::swapExactOutput` function.
+
+```diff
+-    function swapExactOutput(IERC20 inputToken,IERC20 outputToken,uint256 outputAmount,
++    function swapExactOutput(IERC20 inputToken,IERC20 outputToken,uint256 outputAmount,uint256     minInputAMount
+    uint64 deadline
+    )
+        public
+        revertIfZero(outputAmount)
+        revertIfDeadlinePassed(deadline)
+        returns (uint256 inputAmount)
+    {
+        uint256 inputReserves = inputToken.balanceOf(address(this));
+        uint256 outputReserves = outputToken.balanceOf(address(this));
+        inputAmount = getInputAmountBasedOnOutput(
+            outputAmount,
+            inputReserves,
+            outputReserves
+        );
++       if(minInputAMount > inputAmount){
++       revert();
+}
+        _swap(inputToken, inputAmount, outputToken, outputAmount);
+    }
+```
 
 
 
@@ -76,7 +137,37 @@ Recommended Mitigation: Consider adding this code to your `TSwapPool::_addLiquid
 ```
 
 
+[S-#] TITLE (Root Cause + Impact) Incorrect return value is been returned in `TSwapPool::swapExactInput`
 
+Description: the function `TSwapPool::swapExactInput` returns `uint256 output`, but the returns is actually never used anywhere in the function, which is incorrect its name is output so it might return the output value.
+
+Impact: The returned value will always be 0, which is wrong information 
+
+Proof of Concept: `uint256 output` is never used in the function `TSwapPool::swapExactInput`
+
+Recommended Mitigation: Consider adding the below code to your function `TSwapPool::swapExactInput`:
+
+```diff
+returns (uint256 output)
+    {
+        uint256 inputReserves = inputToken.balanceOf(address(this));
+        uint256 outputReserves = outputToken.balanceOf(address(this));
+
+-       uint256 outputAmount = getOutputAmountBasedOnInput(inputAmount,inputReserves,outputReserves);
++       output = getOutputAmountBasedOnInput(inputAmount,inputReserves,outputReserves);
+-        if (outputAmount < minOutputAmount) {
+-            revert TSwapPool__OutputTooLow(outputAmount, minOutputAmount);
+-        }
++       if (output < minOutputAmount) {
++       revert TSwapPool__OutputTooLow(output, minOutputAmount);
++       }
+-       _swap(inputToken, inputAmount, outputToken, outputAmount);
++       _swap(inputToken, inputAmount, outputToken, output);
+    }
+```
+
+
+## Informational
 
 
 [I-1] TITLE (Root Cause + Impact) The error `PoolFactory::PoolFactory__PoolDoesNotExist` is not used in the contract, hence should be removed.

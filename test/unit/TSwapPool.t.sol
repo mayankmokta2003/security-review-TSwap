@@ -112,4 +112,12 @@ contract TSwapPoolTest is Test {
 //   the actual input amount is as of 10e18Weth is: 111445447453471525688
 //   the actual input amount is as of 10e18Weth is: 11144544745347152568
 
+
+
+function testSellPoolTokensReturnsPoolTokens() external {
+    vm.startPrank(liquidityProvider)
+
+    vm.stop
+}
+
 }
