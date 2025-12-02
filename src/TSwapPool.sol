@@ -59,6 +59,7 @@ contract TSwapPool is ERC20 {
         uint256 wethWithdrawn,
         uint256 poolTokensWithdrawn
     );
+    //@audit-info-done- this can be indexed
     event Swap(
         address indexed swapper,
         IERC20 tokenIn,
@@ -130,7 +131,7 @@ contract TSwapPool is ERC20 {
         }
         if (totalLiquidityTokenSupply() > 0) {
             uint256 wethReserves = i_wethToken.balanceOf(address(this));
-            // @audit-gas- poolTokenReserves not used anywhere can be removed
+            // @audit-info-done poolTokenReserves not used anywhere can be removed
             uint256 poolTokenReserves = i_poolToken.balanceOf(address(this));
             // Our invariant says weth, poolTokens, and liquidity tokens must always have the same ratio after the
             // initial deposit
@@ -371,6 +372,7 @@ contract TSwapPool is ERC20 {
         uint256 inputReserves = inputToken.balanceOf(address(this));
         uint256 outputReserves = outputToken.balanceOf(address(this));
 
+        // @audit-high- MEV attack there should be parameter and check like max or min inputAmount
         inputAmount = getInputAmountBasedOnOutput(
             outputAmount,
             inputReserves,
@@ -389,6 +391,8 @@ contract TSwapPool is ERC20 {
         uint256 poolTokenAmount
     ) external returns (uint256 wethAmount) {
         return
+        // @audit-high- this is wrong swapExactInput should be used plus in you fn parameter
+        // there should be uint256 minWethAmount
             swapExactOutput(
                 i_poolToken,
                 i_wethToken,
@@ -456,6 +460,7 @@ contract TSwapPool is ERC20 {
     }
 
     /// @notice a more verbose way of getting the total supply of liquidity tokens
+    // @audit-gas- can be external not public
     function totalLiquidityTokenSupply() public view returns (uint256) {
         return totalSupply();
     }
