@@ -19,6 +19,7 @@ import { IERC20 } from "forge-std/interfaces/IERC20.sol";
 
 contract PoolFactory {
     error PoolFactory__PoolAlreadyExists(address tokenAddress);
+    // @audit-info- PoolFactory__PoolDoesNotExist hasn't used anywhere can be removed
     error PoolFactory__PoolDoesNotExist(address tokenAddress);
 
     /*//////////////////////////////////////////////////////////////
@@ -38,6 +39,7 @@ contract PoolFactory {
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
     constructor(address wethToken) {
+        // @audit-info there can be a address(0) check
         i_wethToken = wethToken;
     }
 

@@ -114,6 +114,7 @@ contract TSwapPool is ERC20 {
         uint256 wethToDeposit,
         uint256 minimumLiquidityTokensToMint,
         uint256 maximumPoolTokensToDeposit,
+        // @audit-high- deadline not set anywhere which leads to miner manipulation
         uint64 deadline
     )
         external
@@ -121,6 +122,7 @@ contract TSwapPool is ERC20 {
         returns (uint256 liquidityTokensToMint)
     {
         if (wethToDeposit < MINIMUM_WETH_LIQUIDITY) {
+            // @audit-info- MINIMUM_WETH_LIQUIDITY is a constant so it should not be emitted
             revert TSwapPool__WethDepositAmountTooLow(
                 MINIMUM_WETH_LIQUIDITY,
                 wethToDeposit
@@ -128,6 +130,7 @@ contract TSwapPool is ERC20 {
         }
         if (totalLiquidityTokenSupply() > 0) {
             uint256 wethReserves = i_wethToken.balanceOf(address(this));
+            // @audit-gas- poolTokenReserves not used anywhere can be removed
             uint256 poolTokenReserves = i_poolToken.balanceOf(address(this));
             // Our invariant says weth, poolTokens, and liquidity tokens must always have the same ratio after the
             // initial deposit
@@ -179,6 +182,7 @@ contract TSwapPool is ERC20 {
                 maximumPoolTokensToDeposit,
                 wethToDeposit
             );
+            // @audit-info this should be above `_addLiquidityMintAndTransfer` call to follow CEI
             liquidityTokensToMint = wethToDeposit;
         }
     }
@@ -193,6 +197,8 @@ contract TSwapPool is ERC20 {
         uint256 liquidityTokensToMint
     ) private {
         _mint(msg.sender, liquidityTokensToMint);
+        // @audit-low emit is backwords should be:
+        // (msg.sender, wethToDeposit, poolTokensToDeposit);
         emit LiquidityAdded(msg.sender, poolTokensToDeposit, wethToDeposit);
 
         // Interactions
@@ -302,11 +308,15 @@ contract TSwapPool is ERC20 {
         inputAmount = (inputReserves * outputAmount) / (outputReserves - outputAmount)
         */
 
+    //@audit-info- constants can be used instead of magic numbers
         return
+        // @audit-High- it should be 1000 but you are charging around 91% fee instrad of 0.03%
             ((inputReserves * outputAmount) * 10000) /
             ((outputReserves - outputAmount) * 997);
     }
 
+    // @audit-gas this function can be marked as external
+    // @audit-info- where is natspac
     function swapExactInput(
         IERC20 inputToken,
         uint256 inputAmount,
@@ -317,6 +327,7 @@ contract TSwapPool is ERC20 {
         public
         revertIfZero(inputAmount)
         revertIfDeadlinePassed(deadline)
+        // @audit-low- function returning wrong return
         returns (uint256 output)
     {
         uint256 inputReserves = inputToken.balanceOf(address(this));
@@ -409,6 +420,7 @@ contract TSwapPool is ERC20 {
         }
 
         swap_count++;
+        // @audit-High- if breaks whole protocol of x * y = k
         if (swap_count >= SWAP_COUNT_MAX) {
             swap_count = 0;
             outputToken.safeTransfer(msg.sender, 1_000_000_000_000_000_000);
@@ -463,6 +475,7 @@ contract TSwapPool is ERC20 {
     function getPriceOfOneWethInPoolTokens() external view returns (uint256) {
         return
             getOutputAmountBasedOnInput(
+                // @audit-info- constants can be used instead of magic numbers
                 1e18,
                 i_wethToken.balanceOf(address(this)),
                 i_poolToken.balanceOf(address(this))
@@ -472,6 +485,7 @@ contract TSwapPool is ERC20 {
     function getPriceOfOnePoolTokenInWeth() external view returns (uint256) {
         return
             getOutputAmountBasedOnInput(
+                // @audit-info- constants can be used instead of magic numbers
                 1e18,
                 i_poolToken.balanceOf(address(this)),
                 i_wethToken.balanceOf(address(this))
