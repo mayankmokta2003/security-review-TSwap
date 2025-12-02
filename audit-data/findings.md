@@ -1,5 +1,31 @@
-[S-#] TITLE (Root Cause + Impact)
+[M-1] TITLE (Root Cause + Impact) In `TSwapPool::deposit` the deadline check for the transaction is missing.
 
+Description: the function `TSwapPool::deposit` has a parameter `uint64 deadline` which is not used anywhere plus according to your natspac this parameter should ensure that no deposit transaction will continue if the deadline has passed. However the paramaeter is not used or updated so anytime the deposit can happen even after the transaction deadline as well which can even lead to `MEV attack`
+
+Impact: Transactions can be send when market conditions are unfavourable to deposit, even when adding a deadline parameter.
+
+Proof of Concept: The `uint64 deadline` parameter is unused.
+
+Recommended Mitigation: Consider making following changes to the function `TSwapPool::deposit`:
+
+```diff
+function deposit(
+        uint256 wethToDeposit,
+        uint256 minimumLiquidityTokensToMint,
+        uint256 maximumPoolTokensToDeposit,
+        uint64 deadline
+    )
+        external
++        revertIfDeadlinePassed(deadline)
+        revertIfZero(wethToDeposit)
+        returns (uint256 liquidityTokensToMint)
+    {
+```
+
+
+
+
+[S-#] TITLE (Root Cause + Impact)
 Description:
 
 Impact:
@@ -7,7 +33,6 @@ Impact:
 Proof of Concept:
 
 Recommended Mitigation:
-
 
 
 

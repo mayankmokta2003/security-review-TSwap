@@ -115,7 +115,7 @@ contract TSwapPool is ERC20 {
         uint256 wethToDeposit,
         uint256 minimumLiquidityTokensToMint,
         uint256 maximumPoolTokensToDeposit,
-        // @audit-high- deadline not set anywhere which leads to miner manipulation
+        // @audit-medium-done deadline not set anywhere which leads to miner manipulation
         uint64 deadline
     )
         external
@@ -316,7 +316,7 @@ contract TSwapPool is ERC20 {
             ((outputReserves - outputAmount) * 997);
     }
 
-    // @audit-gas this function can be marked as external
+    // @audit-info- this function can be marked as external
     // @audit-info- where is natspac
     function swapExactInput(
         IERC20 inputToken,
