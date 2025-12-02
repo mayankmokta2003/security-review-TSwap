@@ -1,3 +1,40 @@
+## High
+
+[H-1] TITLE (Root Cause + Impact) Incorrect fee calculation in the function `TSwapPool::getInputAmountBasedOnOutput` causes protocol to take way too many tokens fron user.
+
+Description: In function `TSwapPool::getInputAmountBasedOnOutput` the calculation is totally wrong in my opinion because you want your protocol to give 0.03% of every swap to the liquidators but this function will actually returns wrong value of input based of output.
+
+Impact: The protocol takes way too many fees from the user
+
+Proof of Concept: COnsider adding the below test to your `TSwapPoolTest`
+
+<details>
+<summary>PoC</summary>
+
+```javascript
+function testGetInputAmountBasedOnOutputChargesAlot() public {
+        vm.startPrank(liquidityProvider);
+        weth.approve(address(pool),100e18);
+        poolToken.approve(address(pool), 100e18);
+        pool.deposit(100e18, 100e18, 100e18, uint64(block.timestamp));
+        uint256 inputReservesWeth = weth.balanceOf(address(pool));
+        uint256 outputReservesPToken = poolToken.balanceOf(address(pool));
+        uint256 expectedInputWeth = 11144544745347152568;
+        uint256 actualInputWeth = pool.getInputAmountBasedOnOutput(10e18, inputReservesWeth, outputReservesPToken);
+        console.log("the actual input amount is as of 10e18Weth is:",actualInputWeth);
+        assert(actualInputWeth > expectedInputWeth);
+        vm.stopPrank();
+    }
+```
+
+</details>
+
+Recommended Mitigation:
+
+
+
+## Medium
+
 [M-1] TITLE (Root Cause + Impact) In `TSwapPool::deposit` the deadline check for the transaction is missing.
 
 Description: the function `TSwapPool::deposit` has a parameter `uint64 deadline` which is not used anywhere plus according to your natspac this parameter should ensure that no deposit transaction will continue if the deadline has passed. However the paramaeter is not used or updated so anytime the deposit can happen even after the transaction deadline as well which can even lead to `MEV attack`
@@ -23,16 +60,20 @@ function deposit(
 ```
 
 
+## Low
 
+[S-#] TITLE (Root Cause + Impact) In `TSwapPool::_addLiquidityMintAndTransfer` function the event emitted is backwords which is incorrect
 
-[S-#] TITLE (Root Cause + Impact)
-Description:
+Description: In the function `TSwapPool::_addLiquidityMintAndTransfer` there is emitted event  `LiquidityAdded` in which the order of events emitted is incorrect as the second one should be on the third place and the third one should be on the second place.
 
-Impact:
+Impact: This could lead to getting wrong values off-chain or on frontend if we call this event or get data.
 
-Proof of Concept:
+Recommended Mitigation: Consider adding this code to your `TSwapPool::_addLiquidityMintAndTransfer` function:
 
-Recommended Mitigation:
+```diff
+-    emit LiquidityAdded(msg.sender, poolTokensToDeposit, wethToDeposit);
++    emit LiquidityAdded(msg.sender, wethToDeposit, poolTokensToDeposit);
+```
 
 
 

@@ -198,7 +198,7 @@ contract TSwapPool is ERC20 {
         uint256 liquidityTokensToMint
     ) private {
         _mint(msg.sender, liquidityTokensToMint);
-        // @audit-low emit is backwords should be:
+        // @audit-low-done emit is backwords should be:
         // (msg.sender, wethToDeposit, poolTokensToDeposit);
         emit LiquidityAdded(msg.sender, poolTokensToDeposit, wethToDeposit);
 
@@ -309,14 +309,14 @@ contract TSwapPool is ERC20 {
         inputAmount = (inputReserves * outputAmount) / (outputReserves - outputAmount)
         */
 
-    //@audit-info- constants can be used instead of magic numbers
+    //@audit-info-done constants can be used instead of magic numbers
         return
         // @audit-High- it should be 1000 but you are charging around 91% fee instrad of 0.03%
             ((inputReserves * outputAmount) * 10000) /
             ((outputReserves - outputAmount) * 997);
     }
 
-    // @audit-info- this function can be marked as external
+    // @audit-info-done this function can be marked as external
     // @audit-info- where is natspac
     function swapExactInput(
         IERC20 inputToken,

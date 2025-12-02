@@ -91,4 +91,25 @@ contract TSwapPoolTest is Test {
         assertEq(pool.totalSupply(), 0);
         assert(weth.balanceOf(liquidityProvider) + poolToken.balanceOf(liquidityProvider) > 400e18);
     }
+
+
+    function testGetInputAmountBasedOnOutputChargesAlot() public {
+        vm.startPrank(liquidityProvider);
+        weth.approve(address(pool),100e18);
+        poolToken.approve(address(pool), 100e18);
+        pool.deposit(100e18, 100e18, 100e18, uint64(block.timestamp));
+        uint256 inputReservesWeth = weth.balanceOf(address(pool));
+        uint256 outputReservesPToken = poolToken.balanceOf(address(pool));
+        uint256 expectedInputWeth = 11144544745347152568;
+        uint256 actualInputWeth = pool.getInputAmountBasedOnOutput(10e18, inputReservesWeth, outputReservesPToken);
+        console.log("the actual input amount is as of 10e18Weth is:",actualInputWeth);
+        assert(actualInputWeth > expectedInputWeth);
+        vm.stopPrank();
+    }
+// the actual input amount is as of 10e18Weth is: 111445447453471525688
+
+// the actual output amount is as of 10e18PT is: 9066108938801491315
+//   the actual input amount is as of 10e18Weth is: 111445447453471525688
+//   the actual input amount is as of 10e18Weth is: 11144544745347152568
+
 }
