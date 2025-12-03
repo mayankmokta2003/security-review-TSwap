@@ -1,7 +1,73 @@
 ## High
 
+[H-1] TITLE (Root Cause + Impact) In `TSwapPool::_swap` user gets `1_000_000_000_000_000_000` output tokens for every 10 transactions which breaks the protocol of `x * y = k`.
 
-[H-1] TITLE (Root Cause + Impact) In `TSwapPool::sellPoolTokens` we are actually swapping `wethAmount` but we want `wethAmount` which is totally opposite.
+Description: When user wants to swap the exact input or exact output, the user call either `swapExactOutput` or `swapExactInput` of in these functions the function `TSwapPool::_swap` gets called which pays the user `1_000_000_000_000_000_000` output tokens for every 10 transactions which breaks the protocol of `x * y = k`. Since we want the protocol to follow `x * y = k` after every swap it breaks when user completes his 10 transactions.
+
+```javascript
+        if (swap_count >= SWAP_COUNT_MAX) {
+            swap_count = 0;
+            outputToken.safeTransfer(msg.sender, 1_000_000_000_000_000_000);
+        }
+```
+
+Impact: The main protocol of the contract get broken i.e `x * y = k` and any attacker could even swap a lot of times draining the funds of contract very easily
+
+Proof of Concept: Consider adding the below test in your `TSwapPoolTest`
+
+<details>
+<summary>PoC</summary>
+```javascript
+function testSwapBreaksContractProtocol() external{
+    vm.startPrank(liquidityProvider);
+    weth.approve(address(pool), type(uint256).max);
+    poolToken.approve(address(pool), type(uint256).max);
+    pool.deposit(100e18, 10e18, 100e18, uint64(block.timestamp));
+    vm.stopPrank();
+    vm.startPrank(user);
+    uint256 startingUserPoolTokenBalance = poolToken.balanceOf(address(user));
+    weth.approve(address(pool),type(uint64).max);
+    uint256 wethInputReserves = weth.balanceOf(address(pool));
+    uint256 poolTokenOutputReserves = poolToken.balanceOf(address(pool));
+    uint256 oneOutputPoolTokenAmount = pool.getOutputAmountBasedOnInput(1e18, wethInputReserves, poolTokenOutputReserves);
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    uint256 endingUserBalance = poolToken.balanceOf(address(user));
+    uint256 expectedUserPoolTokenBalance = startingUserPoolTokenBalance + (oneOutputPoolTokenAmount * 11) ;
+    assert(endingUserBalance > expectedUserPoolTokenBalance);
+    vm.stopPrank();
+}
+```
+</details>
+
+Recommended Mitigation: You are recommended to remove this reward logic of giving free `1_000_000_000_000_000_000` output tokens to the user. Consider adding following changes to the `TSwapPool::_swap` function.
+
+```diff
+        swap_count++;
+-        if (swap_count >= SWAP_COUNT_MAX) {
+-            swap_count = 0;
+-            outputToken.safeTransfer(msg.sender, 1_000_000_000_000_000_000);
+-        }
+        emit Swap(
+            msg.sender,
+            inputToken,
+            inputAmount,
+            outputToken,
+            outputAmount
+        );
+```
+
+
+[H-2] TITLE (Root Cause + Impact) In `TSwapPool::sellPoolTokens` we are actually swapping `wethAmount` but we want `wethAmount` which is totally opposite.
 
 Description:  In `TSwapPool::sellPoolTokens` we actually want to sell out `poolTokens` and in return get `weth` so in order to do this we should call `swapExactInput` because our input is our parameter i.e `uint256 poolTokenAmount`, but instead we are calling `swapExactOutput` which will consider `poolTokens` as output amount and `weth` as input.
 
@@ -47,7 +113,7 @@ Recommended Mitigation: Consider adding the below code in your `TSwapPool::sellP
 
 
 
-[H-2] TITLE (Root Cause + Impact) Incorrect fee calculation in the function `TSwapPool::getInputAmountBasedOnOutput` causes protocol to take way too many tokens fron user.
+[H-3] TITLE (Root Cause + Impact) Incorrect fee calculation in the function `TSwapPool::getInputAmountBasedOnOutput` causes protocol to take way too many tokens from user.
 
 Description: In function `TSwapPool::getInputAmountBasedOnOutput` the calculation is totally wrong in my opinion because you want your protocol to give 0.03% of every swap to the liquidators but this function will actually returns wrong value of input based of output.
 
@@ -88,7 +154,7 @@ return
 
 
 
-[H-3] TITLE (Root Cause + Impact) Lack of slippage protection in `TSwapPool::swapExactOutput` function.
+[H-4] TITLE (Root Cause + Impact) Lack of slippage protection in `TSwapPool::swapExactOutput` function.
 
 Description: The `TSwapPool::swapExactOutput` does not provide any sort of slippage protection. First, there should definitely be a parameter saying `uint256 minInputAmount` and then there should be a check for minInputAmount as well if it exceeds the actual input amount, which is miind of similar to what you did in the function `TSwapPool::swapExactInput`.
 

