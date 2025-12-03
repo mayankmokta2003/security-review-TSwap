@@ -22,8 +22,8 @@ contract TSwapPoolTest is Test {
         weth.mint(liquidityProvider, 200e18);
         poolToken.mint(liquidityProvider, 200e18);
 
-        weth.mint(user, 10e18);
-        poolToken.mint(user, 10e18);
+        weth.mint(user, 20e18);
+        poolToken.mint(user, 20e18);
     }
 
     function testDeposit() public {
@@ -115,9 +115,25 @@ contract TSwapPoolTest is Test {
 
 
 function testSellPoolTokensReturnsPoolTokens() external {
-    vm.startPrank(liquidityProvider)
-
-    vm.stop
+    vm.startPrank(liquidityProvider);
+    weth.approve(address(pool),100e18);
+    poolToken.approve(address(pool),100e18);
+    pool.deposit(100e18, 100e18, 100e18, uint64(block.timestamp));
+    vm.stopPrank();
+    vm.startPrank(user);
+    uint256 startingWethBalance = weth.balanceOf(address(user));
+    uint256 startingPoolTokenBalance = poolToken.balanceOf(address(user));
+    console.log("the starting weth balance is: ",startingWethBalance);
+    console.log("the starting poolToken balance is: ",startingPoolTokenBalance);
+    poolToken.approve(address(pool),type(uint256).max);
+    weth.approve(address(pool),type(uint256).max);
+    pool.sellPoolTokens(1e18);
+    uint256 endingWethBalance = weth.balanceOf(address(user));
+    uint256 endingPoolTokenBalance = poolToken.balanceOf(address(user));
+    console.log("the ending weth balance is: ",endingWethBalance);
+    console.log("the ending poolToken balance is: ",endingPoolTokenBalance);
+    assert(startingPoolTokenBalance > endingPoolTokenBalance);
+    vm.stopPrank();
 }
 
 }

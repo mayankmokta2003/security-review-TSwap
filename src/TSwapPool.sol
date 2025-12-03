@@ -372,7 +372,7 @@ contract TSwapPool is ERC20 {
         uint256 inputReserves = inputToken.balanceOf(address(this));
         uint256 outputReserves = outputToken.balanceOf(address(this));
 
-        // @audit-high- MEV attack there should be parameter and check like max or min inputAmount
+        // @audit-high-done MEV attack there should be parameter and check like max or min inputAmount
         inputAmount = getInputAmountBasedOnOutput(
             outputAmount,
             inputReserves,

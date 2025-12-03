@@ -7,9 +7,43 @@ Description:  In `TSwapPool::sellPoolTokens` we actually want to sell out `poolT
 
 Impact: User will get `poolTokens` instead of `weth`.
 
-Proof of Concept: 
+Proof of Concept: Consider adding the below test in your `TSwapPoolTest`
 
-Recommended Mitigation:
+<details>
+<summary>PoC</summary>
+
+```javascript
+function testSellPoolTokensReturnsPoolTokens() external {
+    vm.startPrank(liquidityProvider);
+    weth.approve(address(pool),100e18);
+    poolToken.approve(address(pool),100e18);
+    pool.deposit(100e18, 100e18, 100e18, uint64(block.timestamp));
+    vm.stopPrank();
+    vm.startPrank(user);
+    uint256 startingWethBalance = weth.balanceOf(address(user));
+    uint256 startingPoolTokenBalance = poolToken.balanceOf(address(user));
+    poolToken.approve(address(pool),type(uint256).max);
+    weth.approve(address(pool),type(uint256).max);
+    pool.sellPoolTokens(1e18);
+    uint256 endingWethBalance = weth.balanceOf(address(user));
+    uint256 endingPoolTokenBalance = poolToken.balanceOf(address(user));
+    assert(startingPoolTokenBalance > endingPoolTokenBalance);
+    vm.stopPrank();
+}
+```
+
+</details>
+
+Recommended Mitigation: Consider adding the below code in your `TSwapPool::sellPoolTokens`
+
+```diff
+-    function sellPoolTokens(uint256 poolTokenAmount) external returns (uint256 wethAmount) {
++    function sellPoolTokens(uint256 poolTokenAmount,uint256 minWethToReceive) external returns (uint256 wethAmount) {
+        return
+-            swapExactOutput(i_poolToken,i_wethToken,poolTokenAmount,uint64(block.timestamp));
++            swapExactInput(i_poolToken,poolTokenAmount,i_wethToken,uint64(block.timestamp));
+    }
+```
 
 
 
@@ -123,7 +157,7 @@ function deposit(
 
 ## Low
 
-[S-#] TITLE (Root Cause + Impact) In `TSwapPool::_addLiquidityMintAndTransfer` function the event emitted is backwords which is incorrect
+[L-1] TITLE (Root Cause + Impact) In `TSwapPool::_addLiquidityMintAndTransfer` function the event emitted is backwords which is incorrect
 
 Description: In the function `TSwapPool::_addLiquidityMintAndTransfer` there is emitted event  `LiquidityAdded` in which the order of events emitted is incorrect as the second one should be on the third place and the third one should be on the second place.
 
@@ -137,7 +171,7 @@ Recommended Mitigation: Consider adding this code to your `TSwapPool::_addLiquid
 ```
 
 
-[S-#] TITLE (Root Cause + Impact) Incorrect return value is been returned in `TSwapPool::swapExactInput`
+[L-2] TITLE (Root Cause + Impact) Incorrect return value is been returned in `TSwapPool::swapExactInput`
 
 Description: the function `TSwapPool::swapExactInput` returns `uint256 output`, but the returns is actually never used anywhere in the function, which is incorrect its name is output so it might return the output value.
 
